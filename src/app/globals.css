@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #0A0A0A;
+  --surface: #141517;
+  --marigold: #F2A93B;
+  --sal-green: #4C9A6B;
+  --vermillion: #C1443B;
+  --foreground: #EDEDED;
+
+  --background: var(--ink);
+  --card: var(--surface);
+  --card-foreground: var(--foreground);
+  --popover: var(--surface);
+  --popover-foreground: var(--foreground);
+  --primary: var(--marigold);
+  --primary-foreground: var(--ink);
+  --secondary: var(--surface);
+  --secondary-foreground: var(--foreground);
+  --muted: #333333;
+  --muted-foreground: #A1A1AA;
+  --accent: var(--marigold);
+  --accent-foreground: var(--ink);
+  --destructive: var(--vermillion);
+  --destructive-foreground: var(--foreground);
+  --border: #262626;
+  --input: #262626;
+  --ring: var(--marigold);
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-surface: var(--surface);
+  --color-marigold: var(--marigold);
+  --color-sal-green: var(--sal-green);
+  --color-vermillion: var(--vermillion);
+  --color-foreground: var(--foreground);
+
+  --font-sans: var(--font-ibm-sans), system-ui, sans-serif;
+  --font-mono: var(--font-ibm-mono), monospace;
+}
+
+body {
+  background-color: var(--ink);
+  color: var(--foreground);
+  font-family: var(--font-ibm-sans), system-ui, sans-serif;
+}
