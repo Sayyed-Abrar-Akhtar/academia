@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { BubbleFill } from "@/components/BubbleFill";
 import { submitAnswerAction } from "./actions";
 
@@ -20,12 +21,13 @@ interface Question {
 }
 
 interface QuizClientProps {
-  topicId: string;
+  topicId?: string;
   topicName: string;
   questions: Question[];
 }
 
-export function QuizClient({ topicId, topicName, questions }: QuizClientProps) {
+export function QuizClient({ topicName, questions }: QuizClientProps) {
+  const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
@@ -103,7 +105,7 @@ export function QuizClient({ topicId, topicName, questions }: QuizClientProps) {
       setSelectedOptionId("");
       setFeedback({ submitted: false });
     } else {
-      window.location.href = "/dashboard";
+      router.push("/dashboard");
     }
   };
 

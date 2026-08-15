@@ -22,12 +22,16 @@ export function BubbleFill({
   onSelect,
   disabled = false,
 }: BubbleFillProps) {
-  const [reduceMotion, setReduceMotion] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState<boolean>(() => {
+    if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+      return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    }
+    return false;
+  });
 
   useEffect(() => {
     if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
       const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
-      setReduceMotion(mediaQuery.matches);
       const listener = (e: MediaQueryListEvent) => setReduceMotion(e.matches);
       mediaQuery.addEventListener("change", listener);
       return () => mediaQuery.removeEventListener("change", listener);
