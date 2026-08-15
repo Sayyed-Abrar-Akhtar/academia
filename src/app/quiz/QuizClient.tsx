@@ -20,17 +20,37 @@ interface Question {
   options: QuestionOption[];
 }
 
+interface Concept {
+  id: string;
+  title: string;
+  summary: string;
+  requiredFailedAttempts: number;
+}
+
 interface QuizClientProps {
   topicId?: string;
   topicName: string;
   questions: Question[];
+  initialConcept?: Concept | null;
+  initialFailedAttempts?: number;
 }
 
-export function QuizClient({ topicName, questions }: QuizClientProps) {
+export function QuizClient({
+  topicName,
+  questions,
+  initialConcept,
+  initialFailedAttempts = 0,
+}: QuizClientProps) {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  const [failedAttempts, setFailedAttempts] = useState(initialFailedAttempts);
+  const [concept, setConcept] = useState<Concept | null>(initialConcept || null);
+  const [unlockedConcept, setUnlockedConcept] = useState(
+    initialFailedAttempts >= (initialConcept?.requiredFailedAttempts || 5)
+  );
+
   const [feedback, setFeedback] = useState<{
     submitted: boolean;
     isCorrect?: boolean;
@@ -92,6 +112,12 @@ export function QuizClient({ topicName, questions }: QuizClientProps) {
         explanation: result.explanation,
         correctOptionId: result.correctOptionId,
       });
+
+      setFailedAttempts(result.failedAttemptsCount);
+      if (result.isConceptUnlocked && result.conceptRecord) {
+        setConcept(result.conceptRecord);
+        setUnlockedConcept(true);
+      }
     } catch (error) {
       console.error("Submission failed:", error);
     } finally {
@@ -114,10 +140,11 @@ export function QuizClient({ topicName, questions }: QuizClientProps) {
   );
 
   return (
-    <div className="max-w-2xl w-full mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-6 font-mono text-xs text-neutral-500 uppercase tracking-widest pb-3 border-b border-neutral-800">
+    <div className="max-w-2xl w-full mx-auto px-4 py-8 space-y-6">
+      {/* Header Info */}
+      <div className="flex justify-between items-center mb-2 font-mono text-xs text-neutral-500 uppercase tracking-widest pb-3 border-b border-neutral-800">
         <div>
-          Biology › <span className="text-marigold font-semibold">{topicName}</span>
+          Subject › <span className="text-marigold font-semibold">{topicName}</span>
         </div>
         <div className="flex items-center gap-3">
           <span>⏱ 00:42</span>
@@ -127,11 +154,36 @@ export function QuizClient({ topicName, questions }: QuizClientProps) {
         </div>
       </div>
 
-      <div className="mb-8 flex items-center justify-between gap-4 font-mono text-xs text-neutral-400 bg-surface/35 border border-neutral-800/80 p-3 rounded-lg">
-        <span className="uppercase tracking-widest text-[10px]">Topic Completion</span>
+      {/* Topic Completion Bar */}
+      <div className="flex items-center justify-between gap-4 font-mono text-xs text-neutral-400 bg-surface/35 border border-neutral-800/80 p-3 rounded-lg">
+        <span className="uppercase tracking-widest text-[10px]">Topic Progress</span>
         <BubbleFill type="display" percentage={progressPercent} totalBubbles={5} />
       </div>
 
+      {/* Unlocked Concept Summary Card (Available after 5+ failed attempts) */}
+      {unlockedConcept && concept ? (
+        <div className="p-5 border border-marigold/40 bg-marigold/5 rounded-lg space-y-3 font-sans animate-fadeIn">
+          <div className="flex items-center justify-between font-mono text-xs text-marigold">
+            <span className="font-bold flex items-center gap-1.5 uppercase tracking-wider">
+              💡 Concept Guide Unlocked
+            </span>
+            <span className="text-[10px] bg-marigold/20 px-2 py-0.5 rounded border border-marigold/30">
+              {failedAttempts} Incorrect Attempts
+            </span>
+          </div>
+          <h3 className="text-base font-semibold text-[#EDEDED] font-mono">{concept.title}</h3>
+          <p className="text-xs text-neutral-300 leading-relaxed whitespace-pre-line font-mono">
+            {concept.summary}
+          </p>
+        </div>
+      ) : (
+        <div className="p-3 border border-neutral-800 bg-surface/30 rounded-lg flex items-center justify-between text-xs font-mono text-neutral-500">
+          <span>🔒 Concept Guide locked</span>
+          <span>Unlocks after 5 incorrect attempts ({failedAttempts}/5)</span>
+        </div>
+      )}
+
+      {/* Question Card */}
       <div className="space-y-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2">

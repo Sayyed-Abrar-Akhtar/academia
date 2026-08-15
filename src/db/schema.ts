@@ -4,7 +4,19 @@ export const users = pgTable("users", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   email: text("email").notNull().unique(),
+  mobileNumber: text("mobile_number").unique(),
+  passwordHash: text("password_hash"),
   rollNumber: text("roll_number").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const sessions = pgTable("sessions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  token: text("token").notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(), // 14 days (1 fortnight) session duration
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -33,6 +45,16 @@ export const topics = pgTable("topics", {
     .notNull(),
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(),
+});
+
+export const concepts = pgTable("concepts", {
+  id: text("id").primaryKey(),
+  topicId: text("topic_id")
+    .references(() => topics.id, { onDelete: "cascade" })
+    .notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull(),
+  requiredFailedAttempts: integer("required_failed_attempts").default(5).notNull(),
 });
 
 export const questions = pgTable("questions", {

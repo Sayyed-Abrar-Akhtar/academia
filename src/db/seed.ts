@@ -1,5 +1,5 @@
 import { db, client } from "./index";
-import { users, exams, subjects, topics, questions, questionOptions } from "./schema";
+import { users, sessions, exams, subjects, topics, concepts, questions, questionOptions } from "./schema";
 
 export async function initializeDatabase() {
   await client.query(`
@@ -7,7 +7,19 @@ export async function initializeDatabase() {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       email TEXT NOT NULL UNIQUE,
+      mobile_number TEXT UNIQUE,
+      password_hash TEXT,
       roll_number TEXT NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      token TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMP NOT NULL,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
@@ -38,6 +50,16 @@ export async function initializeDatabase() {
       subject_id TEXT NOT NULL REFERENCES subjects(id) ON DELETE CASCADE,
       name TEXT NOT NULL,
       slug TEXT NOT NULL UNIQUE
+    );
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS concepts (
+      id TEXT PRIMARY KEY,
+      topic_id TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      summary TEXT NOT NULL,
+      required_failed_attempts INTEGER NOT NULL DEFAULT 5
     );
   `);
 
@@ -83,23 +105,39 @@ export async function seed() {
   await client.query("DELETE FROM attempts");
   await client.query("DELETE FROM question_options");
   await client.query("DELETE FROM questions");
+  await client.query("DELETE FROM concepts");
   await client.query("DELETE FROM topics");
   await client.query("DELETE FROM subjects");
   await client.query("DELETE FROM exams");
+  await client.query("DELETE FROM sessions");
   await client.query("DELETE FROM users");
 
   console.log("Database cleared. Inserting demo/placeholder data...");
 
-  // Hardcoded demo user for local testing without real auth
+  // Seed demo user with mobile number and password hash
   const demoUser = {
     id: "demo-user-id",
     name: "Aarav Shrestha",
     email: "aarav.shrestha@example.com",
+    mobileNumber: "+977-9801234567",
+    passwordHash: "demo1234",
     rollNumber: "MECEE-2083-0447",
     createdAt: new Date(),
   };
   await db.insert(users).values(demoUser);
 
+  // Seed a 14-day (1 fortnight) active session for the user
+  const fortnightMs = 14 * 24 * 60 * 60 * 1000;
+  const activeSession = {
+    id: "sess-demo-001",
+    userId: demoUser.id,
+    token: "demo-fortnight-token-12345",
+    expiresAt: new Date(Date.now() + fortnightMs),
+    createdAt: new Date(),
+  };
+  await db.insert(sessions).values(activeSession);
+
+  // Seed Exam
   const meceeExam = {
     id: "exam-mecee",
     slug: "mecee-bl",
@@ -109,6 +147,7 @@ export async function seed() {
   };
   await db.insert(exams).values(meceeExam);
 
+  // Seed Subjects
   const biologySubject = {
     id: "subj-biology",
     examId: meceeExam.id,
@@ -118,6 +157,16 @@ export async function seed() {
   };
   await db.insert(subjects).values(biologySubject);
 
+  const chemistrySubject = {
+    id: "subj-chemistry",
+    examId: meceeExam.id,
+    name: "Chemistry",
+    slug: "chemistry",
+    weightMarks: 50,
+  };
+  await db.insert(subjects).values(chemistrySubject);
+
+  // Seed Topics
   const geneticsTopic = {
     id: "topic-genetics",
     subjectId: biologySubject.id,
@@ -126,8 +175,55 @@ export async function seed() {
   };
   await db.insert(topics).values(geneticsTopic);
 
-  // NOTE: DEMO / PLACEHOLDER CONTENT ONLY
-  // The real question bank will be entered via an admin panel in a later phase, not hardcoded.
+  const cellBiologyTopic = {
+    id: "topic-cell-biology",
+    subjectId: biologySubject.id,
+    name: "Cell Biology",
+    slug: "cell-biology",
+  };
+  await db.insert(topics).values(cellBiologyTopic);
+
+  const organicChemistryTopic = {
+    id: "topic-organic-chem",
+    subjectId: chemistrySubject.id,
+    name: "Organic Chemistry",
+    slug: "organic-chemistry",
+  };
+  await db.insert(topics).values(organicChemistryTopic);
+
+  // Seed Concept Summaries (Unlocked after 5+ failed attempts)
+  const conceptsToSeed = [
+    {
+      id: "concept-genetics-summary",
+      topicId: geneticsTopic.id,
+      title: "Mendelian Inheritance & Semi-Conservative DNA Replication",
+      summary:
+        "Key Concept Breakdown:\n1. Monohybrid Cross (Tt × Tt): Phenotypic ratio is 3:1 (Tall:Dwarf), Genotypic ratio is 1:2:1 (TT:Tt:tt).\n2. DNA Semi-Conservative Replication: Demonstrated by Meselson & Stahl using 15N heavy isotope. Each daughter DNA duplex contains one original parent strand and one newly synthesized daughter strand.\n3. Universal Donor Blood Group: O Negative lacks A, B, and Rh (D) antigens on RBC membranes, allowing safe transfusions to all blood types.",
+      requiredFailedAttempts: 5,
+    },
+    {
+      id: "concept-cell-bio-summary",
+      topicId: cellBiologyTopic.id,
+      title: "Cell Organelles & Energetics",
+      summary:
+        "Key Concept Breakdown:\n1. Mitochondria: Double-membraned powerhouse generating ATP via oxidative phosphorylation across the inner cristae membrane.\n2. Ribosomes: Non-membranous site of protein synthesis (80S in eukaryotes, 70S in prokaryotes).\n3. Transpiration: Loss of water vapor from stomatal pores driven by negative xylem pressure potential.",
+      requiredFailedAttempts: 5,
+    },
+    {
+      id: "concept-organic-chem-summary",
+      topicId: organicChemistryTopic.id,
+      title: "Functional Groups & Reaction Mechanisms",
+      summary:
+        "Key Concept Breakdown:\n1. Nucleophilic Substitution (SN1 vs SN2): SN1 proceeds via a carbocation intermediate (favored in tertiary substrates), whereas SN2 occurs in a single concerted step with inversion of configuration (favored in primary substrates).\n2. IUPAC Nomenclature Priority: Carboxylic acids > Esters > Aldehydes > Ketones > Alcohols > Amines.",
+      requiredFailedAttempts: 5,
+    },
+  ];
+
+  for (const c of conceptsToSeed) {
+    await db.insert(concepts).values(c);
+  }
+
+  // Expanded Quiz Questions Bank
   const questionsToSeed = [
     {
       id: "q-1",
@@ -213,6 +309,34 @@ export async function seed() {
         { id: "opt-6-d", label: "D" as const, body: "Only RNA is used as template", isCorrect: false },
       ],
     },
+    {
+      id: "q-7",
+      topicId: organicChemistryTopic.id,
+      body: "Which functional group has the highest priority according to standard IUPAC rules?",
+      difficulty: "medium" as const,
+      explanation: "Carboxylic acid (-COOH) possesses the highest priority among the options listed.",
+      curriculumBoard: "NEB",
+      options: [
+        { id: "opt-7-a", label: "A" as const, body: "Alcohol (-OH)", isCorrect: false },
+        { id: "opt-7-b", label: "B" as const, body: "Aldehyde (-CHO)", isCorrect: false },
+        { id: "opt-7-c", label: "C" as const, body: "Carboxylic acid (-COOH)", isCorrect: true },
+        { id: "opt-7-d", label: "D" as const, body: "Ketone (>C=O)", isCorrect: false },
+      ],
+    },
+    {
+      id: "q-8",
+      topicId: organicChemistryTopic.id,
+      body: "SN1 reactions proceed via which characteristic intermediate?",
+      difficulty: "hard" as const,
+      explanation: "SN1 (unimolecular nucleophilic substitution) forms a planar carbocation intermediate in its rate-determining step.",
+      curriculumBoard: "NEB",
+      options: [
+        { id: "opt-8-a", label: "A" as const, body: "Carbanion", isCorrect: false },
+        { id: "opt-8-b", label: "B" as const, body: "Carbocation", isCorrect: true },
+        { id: "opt-8-c", label: "C" as const, body: "Free radical", isCorrect: false },
+        { id: "opt-8-d", label: "D" as const, body: "Transition state complex only", isCorrect: false },
+      ],
+    },
   ];
 
   for (const q of questionsToSeed) {
@@ -221,7 +345,7 @@ export async function seed() {
     await db.insert(questionOptions).values(options.map(opt => ({ ...opt, questionId: q.id })));
   }
 
-  console.log("Database successfully seeded with demo user and 6 Biology questions!");
+  console.log("Database successfully seeded with demo user, 14-day session, concept summaries, and expanded question bank!");
 }
 
 if (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module) {

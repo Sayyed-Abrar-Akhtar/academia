@@ -1,7 +1,7 @@
 "use server";
 
 import { db, ensureDbSeeded } from "@/db";
-import { attempts, questionOptions, questions } from "@/db/schema";
+import { attempts, questionOptions, questions, concepts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 interface SubmitAnswerParams {
@@ -46,9 +46,35 @@ export async function submitAnswerAction({
     createdAt: new Date(),
   });
 
+  const allTopicQuestions = await db.query.questions.findMany({
+    where: eq(questions.topicId, questionDetails.topicId),
+  });
+
+  const topicQuestionIds = allTopicQuestions.map((q) => q.id);
+
+  const userAttempts = await db.query.attempts.findMany({
+    where: eq(attempts.userId, userId),
+  });
+
+  const failedAttemptsOnTopic = userAttempts.filter(
+    (att) => topicQuestionIds.includes(att.questionId) && !att.isCorrect
+  ).length;
+
+  const conceptRecord = await db.query.concepts.findFirst({
+    where: eq(concepts.topicId, questionDetails.topicId),
+  });
+
+  const isConceptUnlocked =
+    conceptRecord &&
+    failedAttemptsOnTopic >= (conceptRecord.requiredFailedAttempts || 5);
+
   return {
     isCorrect,
     explanation: questionDetails.explanation,
     correctOptionId: correctOption?.id,
+    failedAttemptsCount: failedAttemptsOnTopic,
+    conceptRecord: isConceptUnlocked ? conceptRecord : null,
+    isConceptUnlocked,
+    requiredFailedAttempts: conceptRecord?.requiredFailedAttempts || 5,
   };
 }

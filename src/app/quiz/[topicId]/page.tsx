@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { db, ensureDbSeeded } from "@/db";
-import { topics, questions, questionOptions } from "@/db/schema";
+import { topics, questions, questionOptions, concepts, attempts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { QuizClient } from "../QuizClient";
 
@@ -61,6 +61,21 @@ export default async function QuizPage({ params }: QuizPageProps) {
     })
   );
 
+  // Fetch concept summary for this topic
+  const conceptRecord = await db.query.concepts.findFirst({
+    where: eq(concepts.topicId, topicId),
+  });
+
+  // Fetch failed attempts count for demo user
+  const demoUserId = "demo-user-id";
+  const topicQuestionIds = questionsRecord.map((q) => q.id);
+  const userAttempts = await db.query.attempts.findMany({
+    where: eq(attempts.userId, demoUserId),
+  });
+  const failedAttempts = userAttempts.filter(
+    (att) => topicQuestionIds.includes(att.questionId) && !att.isCorrect
+  ).length;
+
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0A0A] text-[#EDEDED]">
       <header className="border-b border-neutral-800 bg-[#0A0A0A]/90 backdrop-blur sticky top-0 z-50">
@@ -89,6 +104,8 @@ export default async function QuizPage({ params }: QuizPageProps) {
           topicId={topicId}
           topicName={topicRecord.name}
           questions={questionsWithOptions}
+          initialConcept={conceptRecord}
+          initialFailedAttempts={failedAttempts}
         />
       </main>
 
