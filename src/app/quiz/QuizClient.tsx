@@ -161,7 +161,7 @@ export function QuizClient({ topicName, questions }: QuizClientProps) {
               href="/exams/mecee-bl"
               className="px-4 py-2 border border-neutral-800 bg-surface text-neutral-400 hover:text-[#EDEDED] rounded text-xs font-mono transition-all"
             >
-              ◄ back to index
+              ◄ back to topics
             </Link>
 
             {!feedback.submitted ? (
@@ -170,7 +170,7 @@ export function QuizClient({ topicName, questions }: QuizClientProps) {
                 disabled={!selectedOptionId || submitting}
                 className="px-5 py-2.5 bg-marigold text-black font-semibold rounded text-xs font-mono hover:bg-opacity-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? "$ submitting..." : "$ submit-answer"}
+                {submitting ? "submitting..." : "submit answer"}
               </button>
             ) : (
               <button

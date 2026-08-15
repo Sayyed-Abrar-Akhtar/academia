@@ -78,7 +78,7 @@ export default async function DashboardPage() {
                 href="/exams/mecee-bl"
                 className="inline-block px-5 py-3 bg-marigold text-black font-semibold font-mono text-xs rounded hover:bg-opacity-95 transition-all"
               >
-                $ resume-quiz-session
+                resume quiz
               </Link>
             </div>
           </div>
