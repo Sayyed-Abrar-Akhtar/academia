@@ -134,7 +134,7 @@ export default async function ExamsMeceeBlPage() {
                         href={`/quiz/${topic.id}`}
                         className="px-4 py-2 bg-marigold text-black font-semibold rounded text-xs font-mono hover:bg-opacity-95 transition-all text-center whitespace-nowrap"
                       >
-                        $ start-quiz
+                        start quiz
                       </Link>
                     </div>
                   </div>
