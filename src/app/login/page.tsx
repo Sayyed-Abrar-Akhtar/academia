@@ -1,5 +1,6 @@
 import React from "react";
 import { Header, getSessionUser } from "@/components/Header";
+import { LoginForm } from "./LoginForm";
 
 export const dynamic = "force-dynamic";
 
@@ -17,40 +18,11 @@ export default async function LoginPage() {
               Student Login
             </h1>
             <p className="text-xs text-neutral-400 font-sans">
-              Enter your MECEE Roll Number or email address to access your dashboard.
+              Enter your email address to receive a secure passwordless magic link.
             </p>
           </div>
 
-          <form className="space-y-4">
-            <div>
-              <label className="block text-xs uppercase text-neutral-400 mb-1">
-                Email / Roll Number
-              </label>
-              <input
-                type="text"
-                placeholder="MECEE-2083-0447"
-                className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-sm text-[#EDEDED] focus:outline-none focus:border-marigold font-mono"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs uppercase text-neutral-400 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                className="w-full px-3 py-2 bg-neutral-900 border border-neutral-800 rounded text-sm text-[#EDEDED] focus:outline-none focus:border-marigold font-mono"
-              />
-            </div>
-
-            <a
-              href="/dashboard"
-              className="block w-full py-2.5 bg-marigold text-black font-semibold rounded text-xs text-center hover:bg-opacity-95 transition-all uppercase"
-            >
-              Sign In
-            </a>
-          </form>
+          <LoginForm />
         </div>
       </main>
 
