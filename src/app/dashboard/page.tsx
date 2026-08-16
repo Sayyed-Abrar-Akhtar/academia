@@ -1,17 +1,20 @@
 import React from "react";
 import Link from "next/link";
 import { db, ensureDbSeeded } from "@/db";
-import { users, attempts } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { users, attempts, exams, subjects, topics, questions } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { AdmitCard } from "@/components/AdmitCard";
 import { BubbleFill } from "@/components/BubbleFill";
+import { HeaderNav } from "@/components/HeaderNav";
+import { getCurrentUser } from "@/db/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   await ensureDbSeeded();
 
-  const demoUserId = "demo-user-id";
+  const user = await getCurrentUser();
+  const demoUserId = user?.id || "demo-user-id";
   const userRecord = await db.query.users.findFirst({
     where: eq(users.id, demoUserId),
   });
@@ -30,35 +33,64 @@ export default async function DashboardPage() {
     );
   }
 
-  const userAttempts = await db.query.attempts.findMany({
-    where: eq(attempts.userId, demoUserId),
+  // Fetch MECEE-BL exam
+  const meceeExam = await db.query.exams.findFirst({
+    where: eq(exams.slug, "mecee-bl"),
   });
 
-  const totalAttempts = userAttempts.length;
-  const correctAttempts = userAttempts.filter((a) => a.isCorrect).length;
+  const meceeSubjects = meceeExam
+    ? await db.query.subjects.findMany({
+        where: eq(subjects.examId, meceeExam.id),
+      })
+    : [];
 
-  const masteryPercentage = totalAttempts > 0
-    ? Math.round((correctAttempts / totalAttempts) * 100)
-    : 0;
+  // Query all user attempts joined with questions and topics
+  const userAttemptsWithDetails = await db
+    .select({
+      attemptId: attempts.id,
+      isCorrect: attempts.isCorrect,
+      topicId: questions.topicId,
+      subjectId: topics.subjectId,
+      createdAt: attempts.createdAt,
+    })
+    .from(attempts)
+    .innerJoin(questions, eq(attempts.questionId, questions.id))
+    .innerJoin(topics, eq(questions.topicId, topics.id))
+    .where(eq(attempts.userId, demoUserId))
+    .orderBy(desc(attempts.createdAt));
+
+  // Determine last active topic for "resume quiz" button
+  const lastActiveAttempt = userAttemptsWithDetails[0];
+  const resumeQuizHref = lastActiveAttempt?.topicId
+    ? `/quiz/${lastActiveAttempt.topicId}`
+    : "/exams/mecee-bl";
+
+  // Compute overall stats for AdmitCard
+  const totalAttemptsCount = userAttemptsWithDetails.length;
+  const correctAttemptsCount = userAttemptsWithDetails.filter((a) => a.isCorrect).length;
+  const overallMasteryPercentage =
+    totalAttemptsCount > 0
+      ? Math.round((correctAttemptsCount / totalAttemptsCount) * 100)
+      : 0;
+
+  // Compute mastery per subject
+  const subjectStats = meceeSubjects.map((sub) => {
+    const subAttempts = userAttemptsWithDetails.filter((a) => a.subjectId === sub.id);
+    const total = subAttempts.length;
+    const correct = subAttempts.filter((a) => a.isCorrect).length;
+    const mastery = total > 0 ? Math.round((correct / total) * 100) : null;
+
+    return {
+      subject: sub,
+      total,
+      correct,
+      mastery,
+    };
+  });
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0A0A] text-[#EDEDED] font-sans">
-      <header className="border-b border-neutral-800 bg-[#0A0A0A]/90 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 py-3.5 flex justify-between items-center text-xs font-mono">
-          <Link href="/" className="font-bold text-marigold tracking-wider text-sm flex items-center gap-1.5 hover:opacity-90">
-            <span>⌂</span> academic.tsx
-          </Link>
-          <div className="flex items-center gap-5 text-neutral-400">
-            <Link href="/" className="hover:text-marigold transition-colors">
-              home
-            </Link>
-            <span className="text-neutral-700">|</span>
-            <Link href="/exams/mecee-bl" className="hover:text-marigold transition-colors">
-              exams
-            </Link>
-          </div>
-        </div>
-      </header>
+      <HeaderNav user={userRecord} />
 
       <main className="flex-grow max-w-5xl w-full mx-auto px-4 py-12 space-y-12">
         <div className="flex flex-col md:flex-row gap-8 justify-between items-start">
@@ -75,7 +107,7 @@ export default async function DashboardPage() {
 
             <div className="pt-2">
               <Link
-                href="/exams/mecee-bl"
+                href={resumeQuizHref}
                 className="inline-block px-5 py-3 bg-marigold text-black font-semibold font-mono text-xs rounded hover:bg-opacity-95 transition-all"
               >
                 resume quiz
@@ -89,7 +121,7 @@ export default async function DashboardPage() {
               rollNo={userRecord.rollNumber}
               exam="MECEE-BL"
               focus="Biology · Genetics"
-              masteryPercentage={masteryPercentage}
+              masteryPercentage={overallMasteryPercentage}
             />
           </div>
         </div>
@@ -100,38 +132,33 @@ export default async function DashboardPage() {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-3">
-            <div className="p-5 border border-neutral-800 bg-surface rounded-lg space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-[#EDEDED]">Biology</span>
-                <span className="text-xs font-mono text-sal-green">{masteryPercentage}%</span>
+            {subjectStats.map(({ subject, total, correct, mastery }) => (
+              <div
+                key={subject.id}
+                className={`p-5 border border-neutral-800 bg-surface rounded-lg space-y-3 ${
+                  mastery === null ? "opacity-70" : ""
+                }`}
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-[#EDEDED]">{subject.name}</span>
+                  <span
+                    className={`text-xs font-mono ${
+                      mastery === null
+                        ? "text-neutral-500"
+                        : mastery >= 50
+                        ? "text-sal-green"
+                        : "text-vermillion"
+                    }`}
+                  >
+                    {mastery !== null ? `${mastery}%` : "Not started"}
+                  </span>
+                </div>
+                <BubbleFill type="display" percentage={mastery ?? 0} totalBubbles={10} />
+                <span className="block text-[10px] font-mono text-neutral-500 uppercase">
+                  {correct} / {total} Qs Correct
+                </span>
               </div>
-              <BubbleFill type="display" percentage={masteryPercentage} totalBubbles={10} />
-              <span className="block text-[10px] font-mono text-neutral-500 uppercase">
-                {correctAttempts} / {totalAttempts} Qs Correct
-              </span>
-            </div>
-
-            <div className="p-5 border border-neutral-800 bg-surface rounded-lg space-y-3 opacity-60">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-neutral-400">Chemistry</span>
-                <span className="text-xs font-mono text-vermillion">34%</span>
-              </div>
-              <BubbleFill type="display" percentage={34} totalBubbles={10} />
-              <span className="text-[10px] font-mono text-vermillion bg-vermillion/10 border border-vermillion/20 px-2 py-0.5 rounded self-start inline-block uppercase font-bold tracking-wider">
-                ⚠ weak topic
-              </span>
-            </div>
-
-            <div className="p-5 border border-neutral-800 bg-surface rounded-lg space-y-3 opacity-60">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-neutral-400">Physics</span>
-                <span className="text-xs font-mono text-neutral-500">40%</span>
-              </div>
-              <BubbleFill type="display" percentage={40} totalBubbles={10} />
-              <span className="block text-[10px] font-mono text-neutral-500 uppercase">
-                0 / 0 Qs Correct
-              </span>
-            </div>
+            ))}
           </div>
         </div>
 

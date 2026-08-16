@@ -1,15 +1,19 @@
 import React from "react";
 import Link from "next/link";
 import { db, ensureDbSeeded } from "@/db";
-import { exams, subjects, topics } from "@/db/schema";
+import { exams, subjects, topics, attempts, questions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { BubbleFill } from "@/components/BubbleFill";
+import { HeaderNav } from "@/components/HeaderNav";
+import { getCurrentUser } from "@/db/session";
 
 export const dynamic = "force-dynamic";
 
 export default async function ExamsMeceeBlPage() {
   await ensureDbSeeded();
 
+  const user = await getCurrentUser();
+  const demoUserId = user?.id || "demo-user-id";
   const meceeExam = await db.query.exams.findFirst({
     where: eq(exams.slug, "mecee-bl"),
   });
@@ -32,28 +36,41 @@ export default async function ExamsMeceeBlPage() {
     where: eq(subjects.examId, meceeExam.id),
   });
 
-  const meceeTopics = await db.query.topics.findMany({
-    where: eq(topics.subjectId, meceeSubjects[0]?.id || ""),
+  const meceeTopics = await db.query.topics.findMany();
+
+  // Query user attempts joined with questions and topics
+  const userAttemptsWithDetails = await db
+    .select({
+      attemptId: attempts.id,
+      isCorrect: attempts.isCorrect,
+      topicId: questions.topicId,
+      subjectId: topics.subjectId,
+    })
+    .from(attempts)
+    .innerJoin(questions, eq(attempts.questionId, questions.id))
+    .innerJoin(topics, eq(questions.topicId, topics.id))
+    .where(eq(attempts.userId, demoUserId));
+
+  // Compute stats per subject
+  const subjectStats = meceeSubjects.map((sub) => {
+    const subAttempts = userAttemptsWithDetails.filter((a) => a.subjectId === sub.id);
+    const total = subAttempts.length;
+    const correct = subAttempts.filter((a) => a.isCorrect).length;
+    const mastery = total > 0 ? Math.round((correct / total) * 100) : null;
+    const subTopics = meceeTopics.filter((t) => t.subjectId === sub.id);
+
+    return {
+      subject: sub,
+      total,
+      correct,
+      mastery,
+      topics: subTopics,
+    };
   });
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0A0A] text-[#EDEDED] font-sans">
-      <header className="border-b border-neutral-800 bg-[#0A0A0A]/90 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 py-3.5 flex justify-between items-center text-xs font-mono">
-          <Link href="/" className="font-bold text-marigold tracking-wider text-sm flex items-center gap-1.5 hover:opacity-90">
-            <span>⌂</span> academic.tsx
-          </Link>
-          <div className="flex items-center gap-5 text-neutral-400">
-            <Link href="/" className="hover:text-marigold transition-colors">
-              home
-            </Link>
-            <span className="text-neutral-700">|</span>
-            <Link href="/dashboard" className="hover:text-marigold transition-colors">
-              dashboard
-            </Link>
-          </div>
-        </div>
-      </header>
+      <HeaderNav user={user} />
 
       <main className="flex-grow max-w-4xl w-full mx-auto px-4 py-12">
         <div className="mb-10 font-mono">
@@ -68,79 +85,94 @@ export default async function ExamsMeceeBlPage() {
           </p>
         </div>
 
-        <div className="space-y-8">
+        <div className="space-y-12">
           <div>
             <div className="font-mono text-xs text-neutral-500 mb-4 pb-2 border-b border-neutral-800 uppercase tracking-widest">
               02subjects/
             </div>
 
             <div className="grid gap-6 sm:grid-cols-2">
-              {meceeSubjects.map((sub) => (
+              {subjectStats.map(({ subject, mastery }) => (
                 <div
-                  key={sub.id}
+                  key={subject.id}
                   className="p-5 border border-neutral-800 bg-surface rounded-lg space-y-4 hover:border-neutral-700 transition-colors"
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <h2 className="text-xl font-bold text-[#EDEDED]">{sub.name}</h2>
+                      <h2 className="text-xl font-bold text-[#EDEDED]">{subject.name}</h2>
                       <p className="text-xs text-neutral-500 font-mono mt-1">
-                        WEIGHT: {sub.weightMarks} MARKS
+                        WEIGHT: {subject.weightMarks} MARKS
                       </p>
                     </div>
                     <span className="text-xs font-mono px-2 py-0.5 rounded bg-neutral-900 border border-neutral-800 text-marigold">
-                      {sub.slug.toUpperCase()}
+                      {subject.slug.toUpperCase()}
                     </span>
                   </div>
 
                   <div className="space-y-1.5">
                     <div className="flex justify-between font-mono text-[10px] text-neutral-400 uppercase">
                       <span>Subject Progress</span>
-                      <span>61% accuracy</span>
+                      <span>{mastery !== null ? `${mastery}% accuracy` : "Not started"}</span>
                     </div>
-                    <BubbleFill type="display" percentage={61} totalBubbles={10} />
+                    <BubbleFill type="display" percentage={mastery ?? 0} totalBubbles={10} />
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="pt-4">
+          <div className="pt-4 space-y-8">
             <div className="font-mono text-xs text-neutral-500 mb-4 pb-2 border-b border-neutral-800 uppercase tracking-widest">
-              03topics / biology/
+              03topics /
             </div>
 
-            {meceeTopics.length === 0 ? (
-              <p className="text-sm text-neutral-500 italic">No topics found for this subject.</p>
-            ) : (
-              <div className="grid gap-4">
-                {meceeTopics.map((topic) => (
-                  <div
-                    key={topic.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-neutral-800/80 bg-surface/50 rounded-lg hover:border-neutral-700 transition-colors gap-4"
-                  >
-                    <div>
-                      <h3 className="text-base font-semibold text-[#EDEDED]">{topic.name}</h3>
-                      <p className="text-xs text-neutral-500 font-mono mt-1">
-                        SLUG: {topic.slug}
-                      </p>
-                    </div>
+            {subjectStats.map(({ subject, topics: subTopics }) => (
+              <div key={subject.id} className="space-y-4">
+                <h3 className="text-lg font-bold text-marigold font-mono uppercase tracking-wider">
+                  {subject.name} Topics
+                </h3>
 
-                    <div className="flex items-center gap-4">
-                      <div className="hidden xs:block">
-                        <BubbleFill type="display" percentage={52} totalBubbles={5} />
-                      </div>
+                {subTopics.length === 0 ? (
+                  <p className="text-sm text-neutral-500 italic">No topics found for this subject.</p>
+                ) : (
+                  <div className="grid gap-4">
+                    {subTopics.map((topic) => {
+                      const topicAttempts = userAttemptsWithDetails.filter((a) => a.topicId === topic.id);
+                      const topicTotal = topicAttempts.length;
+                      const topicCorrect = topicAttempts.filter((a) => a.isCorrect).length;
+                      const topicMastery = topicTotal > 0 ? Math.round((topicCorrect / topicTotal) * 100) : 0;
 
-                      <Link
-                        href={`/quiz/${topic.id}`}
-                        className="px-4 py-2 bg-marigold text-black font-semibold rounded text-xs font-mono hover:bg-opacity-95 transition-all text-center whitespace-nowrap"
-                      >
-                        start quiz
-                      </Link>
-                    </div>
+                      return (
+                        <div
+                          key={topic.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-neutral-800/80 bg-surface/50 rounded-lg hover:border-neutral-700 transition-colors gap-4"
+                        >
+                          <div>
+                            <h4 className="text-base font-semibold text-[#EDEDED]">{topic.name}</h4>
+                            <p className="text-xs text-neutral-500 font-mono mt-1">
+                              SLUG: {topic.slug}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            <div className="hidden xs:block">
+                              <BubbleFill type="display" percentage={topicMastery} totalBubbles={5} />
+                            </div>
+
+                            <Link
+                              href={`/quiz/${topic.id}`}
+                              className="px-4 py-2 bg-marigold text-black font-semibold rounded text-xs font-mono hover:bg-opacity-95 transition-all text-center whitespace-nowrap"
+                            >
+                              start quiz
+                            </Link>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
+                )}
               </div>
-            )}
+            ))}
           </div>
         </div>
       </main>
