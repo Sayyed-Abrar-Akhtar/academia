@@ -1,7 +1,7 @@
 import React from "react";
 import Link from "next/link";
 import { db, ensureDbSeeded } from "@/db";
-import { topics, questions, questionOptions } from "@/db/schema";
+import { topics, questions, questionOptions, resources } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { QuizClient } from "../QuizClient";
 import { Header, getSessionUser } from "@/components/Header";
@@ -63,6 +63,11 @@ export default async function QuizPage({ params }: QuizPageProps) {
     })
   );
 
+  const relatedResources = await db.query.resources.findMany({
+    where: eq(resources.topicId, topicId),
+    limit: 3,
+  });
+
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0A0A] text-[#EDEDED]">
       <Header user={user} />
@@ -74,6 +79,42 @@ export default async function QuizPage({ params }: QuizPageProps) {
           questions={questionsWithOptions}
           userId={user?.id}
         />
+
+        {relatedResources.length > 0 && (
+          <section
+            data-testid="related-resources-block"
+            className="max-w-2xl mx-auto w-full px-4 mt-12 border-t border-neutral-800 pt-8"
+          >
+            <h3 className="text-sm font-mono font-bold text-marigold uppercase tracking-wider mb-4 flex items-center gap-2">
+              <span>📚</span> Related Resources ({relatedResources.length})
+            </h3>
+
+            <div className="space-y-3">
+              {relatedResources.map((res) => (
+                <div
+                  key={res.id}
+                  className="bg-[#121212] border border-neutral-800 hover:border-neutral-700 rounded-lg p-3.5 flex items-center justify-between gap-4 transition-colors text-xs font-mono"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="uppercase tracking-wider px-2 py-0.5 rounded bg-neutral-800 text-marigold font-bold text-[10px]">
+                      {res.type.replace("_", " ")}
+                    </span>
+                    <span className="truncate text-neutral-200 font-medium">
+                      {res.title}
+                    </span>
+                  </div>
+
+                  <Link
+                    href={`/library?type=${res.type}`}
+                    className="shrink-0 text-marigold hover:underline text-[11px]"
+                  >
+                    View in Library →
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       <footer className="border-t border-neutral-800 py-6 text-center text-xs font-mono text-neutral-600">

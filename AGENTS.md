@@ -17,6 +17,7 @@
 - `questions`: `id`, `topic_id` (fk), `body`, `difficulty` ("easy"|"medium"|"hard"), `explanation`, `curriculum_board` ("NEB")
 - `question_options`: `id`, `question_id` (fk), `label` ("A"|"B"|"C"|"D"), `body`, `is_correct`
 - `attempts`: `id`, `user_id` (fk), `question_id` (fk), `selected_option_id` (fk), `is_correct`, `time_taken_ms`, `created_at`
+- `resources`: `id`, `type` ("pdf"|"video"|"book"|"past_paper"|"thesis_guide"|"notes"), `title`, `description`, `url`, `source_attribution`, `exam_id` (fk, nullable), `subject_id` (fk, nullable), `topic_id` (fk, nullable), `access_tier` ("free"|"pro"), `created_at`
 
 ## Authentication System
 - **Magic-Link Authentication Flow:**
