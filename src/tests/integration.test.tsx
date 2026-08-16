@@ -7,8 +7,8 @@ import { questions, questionOptions, attempts } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { submitAnswerAction } from "@/app/quiz/actions";
 import { BubbleFill } from "@/components/BubbleFill";
-import DashboardPage from "@/app/dashboard/page.tsx";
-import ExamsMeceeBlPage from "@/app/exams/mecee-bl/page.tsx";
+import DashboardPage from "@/app/dashboard/page";
+import ExamsMeceeBlPage from "@/app/exams/mecee-bl/page";
 import { HeaderNav } from "@/components/HeaderNav";
 
 // Mock next/headers for cookies
