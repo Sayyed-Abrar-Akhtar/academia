@@ -16,3 +16,9 @@
 - `questions`: `id`, `topic_id` (fk), `body`, `difficulty` ("easy"|"medium"|"hard"), `explanation`, `curriculum_board` ("NEB")
 - `question_options`: `id`, `question_id` (fk), `label` ("A"|"B"|"C"|"D"), `body`, `is_correct`
 - `attempts`: `id`, `user_id` (fk), `question_id` (fk), `selected_option_id` (fk), `is_correct`, `time_taken_ms`, `created_at`
+
+## Subject-Mastery Calculation Logic
+- Subject mastery is dynamically computed per user by joining `attempts` -> `questions` -> `topics` -> `subjects` for the current user.
+- **Formula:** `masteryPercentage = Math.round((correctAttempts / totalAttempts) * 100)`.
+- If a user has 0 attempts for a subject, the mastery status displays `"Not started"` rather than a fabricated or zero percentage.
+- Subject matrices on both the dashboard (`/dashboard`) and exam listing (`/exams/mecee-bl`) query subjects from the database for the active exam and compute mastery using this shared rule set to prevent data drift across views.

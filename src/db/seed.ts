@@ -109,6 +109,7 @@ export async function seed() {
   };
   await db.insert(exams).values(meceeExam);
 
+  // Subjects
   const biologySubject = {
     id: "subj-biology",
     examId: meceeExam.id,
@@ -116,18 +117,68 @@ export async function seed() {
     slug: "biology",
     weightMarks: 80,
   };
-  await db.insert(subjects).values(biologySubject);
+  const chemistrySubject = {
+    id: "subj-chemistry",
+    examId: meceeExam.id,
+    name: "Chemistry",
+    slug: "chemistry",
+    weightMarks: 50,
+  };
+  const cellBioSubject = {
+    id: "subj-cell-biology",
+    examId: meceeExam.id,
+    name: "Cell Biology",
+    slug: "cell-biology",
+    weightMarks: 30,
+  };
+  const orgChemSubject = {
+    id: "subj-organic-chemistry",
+    examId: meceeExam.id,
+    name: "Organic Chemistry",
+    slug: "organic-chemistry",
+    weightMarks: 40,
+  };
 
+  await db.insert(subjects).values([
+    biologySubject,
+    chemistrySubject,
+    cellBioSubject,
+    orgChemSubject,
+  ]);
+
+  // Topics
   const geneticsTopic = {
     id: "topic-genetics",
     subjectId: biologySubject.id,
     name: "Genetics",
     slug: "genetics",
   };
-  await db.insert(topics).values(geneticsTopic);
+  const genChemTopic = {
+    id: "topic-gen-chem",
+    subjectId: chemistrySubject.id,
+    name: "General Chemistry",
+    slug: "general-chemistry",
+  };
+  const cellStructureTopic = {
+    id: "topic-cell-structure",
+    subjectId: cellBioSubject.id,
+    name: "Cell Structure",
+    slug: "cell-structure",
+  };
+  const hydrocarbonsTopic = {
+    id: "topic-hydrocarbons",
+    subjectId: orgChemSubject.id,
+    name: "Hydrocarbons",
+    slug: "hydrocarbons",
+  };
 
-  // NOTE: DEMO / PLACEHOLDER CONTENT ONLY
-  // The real question bank will be entered via an admin panel in a later phase, not hardcoded.
+  await db.insert(topics).values([
+    geneticsTopic,
+    genChemTopic,
+    cellStructureTopic,
+    hydrocarbonsTopic,
+  ]);
+
   const questionsToSeed = [
     {
       id: "q-1",
@@ -213,6 +264,48 @@ export async function seed() {
         { id: "opt-6-d", label: "D" as const, body: "Only RNA is used as template", isCorrect: false },
       ],
     },
+    {
+      id: "q-7",
+      topicId: genChemTopic.id,
+      body: "What is the pH of a neutral solution at 25°C?",
+      difficulty: "easy" as const,
+      explanation: "At 25°C, a neutral aqueous solution has a pH of 7.",
+      curriculumBoard: "NEB",
+      options: [
+        { id: "opt-7-a", label: "A" as const, body: "0", isCorrect: false },
+        { id: "opt-7-b", label: "B" as const, body: "7", isCorrect: true },
+        { id: "opt-7-c", label: "C" as const, body: "14", isCorrect: false },
+        { id: "opt-7-d", label: "D" as const, body: "1", isCorrect: false },
+      ],
+    },
+    {
+      id: "q-8",
+      topicId: cellStructureTopic.id,
+      body: "Which component is present in plant cell walls but absent in animal cells?",
+      difficulty: "easy" as const,
+      explanation: "Cellulose provides rigid structure to plant cell walls.",
+      curriculumBoard: "NEB",
+      options: [
+        { id: "opt-8-a", label: "A" as const, body: "Cellulose", isCorrect: true },
+        { id: "opt-8-b", label: "B" as const, body: "Glycogen", isCorrect: false },
+        { id: "opt-8-c", label: "C" as const, body: "Chitin", isCorrect: false },
+        { id: "opt-8-d", label: "D" as const, body: "Peptidoglycan", isCorrect: false },
+      ],
+    },
+    {
+      id: "q-9",
+      topicId: hydrocarbonsTopic.id,
+      body: "Which hydrocarbon is an alkane?",
+      difficulty: "easy" as const,
+      explanation: "Methane (CH4) follows the general alkane formula CnH2n+2.",
+      curriculumBoard: "NEB",
+      options: [
+        { id: "opt-9-a", label: "A" as const, body: "Methane", isCorrect: true },
+        { id: "opt-9-b", label: "B" as const, body: "Ethene", isCorrect: false },
+        { id: "opt-9-c", label: "C" as const, body: "Ethyne", isCorrect: false },
+        { id: "opt-9-d", label: "D" as const, body: "Benzene", isCorrect: false },
+      ],
+    },
   ];
 
   for (const q of questionsToSeed) {
@@ -221,7 +314,7 @@ export async function seed() {
     await db.insert(questionOptions).values(options.map(opt => ({ ...opt, questionId: q.id })));
   }
 
-  console.log("Database successfully seeded with demo user and 6 Biology questions!");
+  console.log("Database successfully seeded with demo user and questions across 4 subjects!");
 }
 
 if (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module) {

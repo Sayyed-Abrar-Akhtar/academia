@@ -1,34 +1,18 @@
 import React from "react";
 import Link from "next/link";
 import { BubbleFill } from "@/components/BubbleFill";
+import { HeaderNav } from "@/components/HeaderNav";
+import { getCurrentUser } from "@/db/session";
 
-export default function LandingPage() {
+export const dynamic = "force-dynamic";
+
+export default async function LandingPage() {
   const nepaliDatePlaceholder = "Shrawan 28, 2083 BS";
+  const user = await getCurrentUser();
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0A0A] text-[#EDEDED] selection:bg-marigold selection:text-black">
-      <header className="border-b border-neutral-800 bg-[#0A0A0A]/90 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 py-3.5 flex justify-between items-center text-xs font-mono">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="font-bold text-marigold tracking-wider text-sm flex items-center gap-1.5 hover:opacity-90">
-              <span>⌂</span> academic.tsx
-            </Link>
-            <nav className="hidden sm:flex items-center gap-5 text-neutral-400">
-              <Link href="/exams/mecee-bl" className="hover:text-marigold transition-colors">
-                📂 exams/mecee-bl
-              </Link>
-              <span className="text-neutral-700">|</span>
-              <Link href="/dashboard" className="hover:text-marigold transition-colors">
-                📊 dashboard
-              </Link>
-            </nav>
-          </div>
-          <div className="flex items-center gap-3">
-            <span className="w-2 h-2 rounded-full bg-sal-green animate-pulse" />
-            <span className="text-neutral-400 font-mono hidden xs:inline">1,204 active now</span>
-          </div>
-        </div>
-      </header>
+      <HeaderNav user={user} />
 
       <main className="flex-grow flex flex-col justify-center max-w-4xl mx-auto px-4 py-16 sm:py-24">
         <div className="flex flex-wrap justify-between items-center border-b border-neutral-800 pb-3 mb-8 text-xs font-mono text-neutral-400">
