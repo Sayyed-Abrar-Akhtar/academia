@@ -4,6 +4,7 @@ import { db, ensureDbSeeded } from "@/db";
 import { topics, questions, questionOptions } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { QuizClient } from "../QuizClient";
+import { Header, getSessionUser } from "@/components/Header";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ interface QuizPageProps {
 export default async function QuizPage({ params }: QuizPageProps) {
   await ensureDbSeeded();
 
+  const user = await getSessionUser();
   const resolvedParams = await params;
   const topicId = resolvedParams.topicId;
 
@@ -63,26 +65,7 @@ export default async function QuizPage({ params }: QuizPageProps) {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0A0A] text-[#EDEDED]">
-      <header className="border-b border-neutral-800 bg-[#0A0A0A]/90 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 py-3.5 flex justify-between items-center text-xs font-mono">
-          <Link href="/" className="font-bold text-marigold tracking-wider text-sm flex items-center gap-1.5 hover:opacity-90">
-            <span>⌂</span> academic.tsx
-          </Link>
-          <div className="flex items-center gap-5 text-neutral-400">
-            <Link href="/" className="hover:text-marigold transition-colors">
-              home
-            </Link>
-            <span className="text-neutral-700">|</span>
-            <Link href="/exams/mecee-bl" className="hover:text-marigold transition-colors">
-              exams
-            </Link>
-            <span className="text-neutral-700">|</span>
-            <Link href="/dashboard" className="hover:text-marigold transition-colors">
-              dashboard
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Header user={user} />
 
       <main className="flex-grow flex flex-col justify-center py-12">
         <QuizClient
