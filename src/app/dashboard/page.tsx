@@ -1,15 +1,19 @@
 import React from "react";
 import Link from "next/link";
 import { db, ensureDbSeeded } from "@/db";
-import { users, attempts } from "@/db/schema";
+import { users, attempts, exams, subjects } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { AdmitCard } from "@/components/AdmitCard";
 import { BubbleFill } from "@/components/BubbleFill";
+import { Header, getSessionUser } from "@/components/Header";
+import { getSubjectMasteryForUser, getLastActiveTopicIdForUser } from "@/lib/mastery";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   await ensureDbSeeded();
+
+  const user = await getSessionUser();
 
   const demoUserId = "demo-user-id";
   const userRecord = await db.query.users.findFirst({
@@ -41,24 +45,32 @@ export default async function DashboardPage() {
     ? Math.round((correctAttempts / totalAttempts) * 100)
     : 0;
 
+  const meceeExam = await db.query.exams.findFirst({
+    where: eq(exams.slug, "mecee-bl"),
+  });
+
+  const meceeSubjects = meceeExam
+    ? await db.query.subjects.findMany({
+        where: eq(subjects.examId, meceeExam.id),
+      })
+    : [];
+
+  const subjectMasteries = await Promise.all(
+    meceeSubjects.map(async (subj) => {
+      const mastery = await getSubjectMasteryForUser(demoUserId, subj.id);
+      return {
+        subject: subj,
+        mastery,
+      };
+    })
+  );
+
+  const lastActiveTopicId = await getLastActiveTopicIdForUser(demoUserId);
+  const resumeQuizHref = lastActiveTopicId ? `/quiz/${lastActiveTopicId}` : "/exams/mecee-bl";
+
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0A0A] text-[#EDEDED] font-sans">
-      <header className="border-b border-neutral-800 bg-[#0A0A0A]/90 backdrop-blur sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 py-3.5 flex justify-between items-center text-xs font-mono">
-          <Link href="/" className="font-bold text-marigold tracking-wider text-sm flex items-center gap-1.5 hover:opacity-90">
-            <span>⌂</span> academic.tsx
-          </Link>
-          <div className="flex items-center gap-5 text-neutral-400">
-            <Link href="/" className="hover:text-marigold transition-colors">
-              home
-            </Link>
-            <span className="text-neutral-700">|</span>
-            <Link href="/exams/mecee-bl" className="hover:text-marigold transition-colors">
-              exams
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Header user={user} />
 
       <main className="flex-grow max-w-5xl w-full mx-auto px-4 py-12 space-y-12">
         <div className="flex flex-col md:flex-row gap-8 justify-between items-start">
@@ -75,8 +87,8 @@ export default async function DashboardPage() {
 
             <div className="pt-2">
               <Link
-                href="/exams/mecee-bl"
-                className="inline-block px-5 py-3 bg-marigold text-black font-semibold font-mono text-xs rounded hover:bg-opacity-95 transition-all"
+                href={resumeQuizHref}
+                className="inline-block px-5 py-3 bg-marigold text-black font-semibold font-mono text-xs rounded hover:bg-opacity-95 transition-all uppercase"
               >
                 resume quiz
               </Link>
@@ -100,38 +112,27 @@ export default async function DashboardPage() {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-3">
-            <div className="p-5 border border-neutral-800 bg-surface rounded-lg space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-[#EDEDED]">Biology</span>
-                <span className="text-xs font-mono text-sal-green">{masteryPercentage}%</span>
+            {subjectMasteries.map(({ subject, mastery }) => (
+              <div
+                key={subject.id}
+                className={`p-5 border border-neutral-800 bg-surface rounded-lg space-y-3 ${
+                  mastery.isNotStarted ? "opacity-60" : ""
+                }`}
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-[#EDEDED]">{subject.name}</span>
+                  <span className="text-xs font-mono text-sal-green">
+                    {mastery.isNotStarted ? "Not started" : `${mastery.percentage}%`}
+                  </span>
+                </div>
+                <BubbleFill type="display" percentage={mastery.isNotStarted ? 0 : mastery.percentage} totalBubbles={10} />
+                <span className="block text-[10px] font-mono text-neutral-500 uppercase">
+                  {mastery.isNotStarted
+                    ? "Not started"
+                    : `${mastery.correctAttempts} / ${mastery.totalAttempts} Qs Correct`}
+                </span>
               </div>
-              <BubbleFill type="display" percentage={masteryPercentage} totalBubbles={10} />
-              <span className="block text-[10px] font-mono text-neutral-500 uppercase">
-                {correctAttempts} / {totalAttempts} Qs Correct
-              </span>
-            </div>
-
-            <div className="p-5 border border-neutral-800 bg-surface rounded-lg space-y-3 opacity-60">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-neutral-400">Chemistry</span>
-                <span className="text-xs font-mono text-vermillion">34%</span>
-              </div>
-              <BubbleFill type="display" percentage={34} totalBubbles={10} />
-              <span className="text-[10px] font-mono text-vermillion bg-vermillion/10 border border-vermillion/20 px-2 py-0.5 rounded self-start inline-block uppercase font-bold tracking-wider">
-                ⚠ weak topic
-              </span>
-            </div>
-
-            <div className="p-5 border border-neutral-800 bg-surface rounded-lg space-y-3 opacity-60">
-              <div className="flex justify-between items-center">
-                <span className="font-semibold text-neutral-400">Physics</span>
-                <span className="text-xs font-mono text-neutral-500">40%</span>
-              </div>
-              <BubbleFill type="display" percentage={40} totalBubbles={10} />
-              <span className="block text-[10px] font-mono text-neutral-500 uppercase">
-                0 / 0 Qs Correct
-              </span>
-            </div>
+            ))}
           </div>
         </div>
 

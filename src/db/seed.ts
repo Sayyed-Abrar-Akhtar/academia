@@ -118,6 +118,15 @@ export async function seed() {
   };
   await db.insert(subjects).values(biologySubject);
 
+  const chemistrySubject = {
+    id: "subj-chemistry",
+    examId: meceeExam.id,
+    name: "Chemistry",
+    slug: "chemistry",
+    weightMarks: 50,
+  };
+  await db.insert(subjects).values(chemistrySubject);
+
   const geneticsTopic = {
     id: "topic-genetics",
     subjectId: biologySubject.id,
@@ -126,8 +135,22 @@ export async function seed() {
   };
   await db.insert(topics).values(geneticsTopic);
 
-  // NOTE: DEMO / PLACEHOLDER CONTENT ONLY
-  // The real question bank will be entered via an admin panel in a later phase, not hardcoded.
+  const cellBiologyTopic = {
+    id: "topic-cell-biology",
+    subjectId: biologySubject.id,
+    name: "Cell Biology",
+    slug: "cell-biology",
+  };
+  await db.insert(topics).values(cellBiologyTopic);
+
+  const organicChemistryTopic = {
+    id: "topic-organic-chemistry",
+    subjectId: chemistrySubject.id,
+    name: "Organic Chemistry",
+    slug: "organic-chemistry",
+  };
+  await db.insert(topics).values(organicChemistryTopic);
+
   const questionsToSeed = [
     {
       id: "q-1",
@@ -213,15 +236,43 @@ export async function seed() {
         { id: "opt-6-d", label: "D" as const, body: "Only RNA is used as template", isCorrect: false },
       ],
     },
+    {
+      id: "q-7",
+      topicId: cellBiologyTopic.id,
+      body: "Which structure is present in plant cells but absent in animal cells?",
+      difficulty: "easy" as const,
+      explanation: "Cell walls made of cellulose provide structural support in plant cells.",
+      curriculumBoard: "NEB",
+      options: [
+        { id: "opt-7-a", label: "A" as const, body: "Cell wall", isCorrect: true },
+        { id: "opt-7-b", label: "B" as const, body: "Cell membrane", isCorrect: false },
+        { id: "opt-7-c", label: "C" as const, body: "Nucleus", isCorrect: false },
+        { id: "opt-7-d", label: "D" as const, body: "Cytoplasm", isCorrect: false },
+      ],
+    },
+    {
+      id: "q-8",
+      topicId: organicChemistryTopic.id,
+      body: "Which functional group is characteristic of alcohols?",
+      difficulty: "easy" as const,
+      explanation: "The hydroxyl group (-OH) defines alcohols.",
+      curriculumBoard: "NEB",
+      options: [
+        { id: "opt-8-a", label: "A" as const, body: "Hydroxyl group (-OH)", isCorrect: true },
+        { id: "opt-8-b", label: "B" as const, body: "Carboxyl group (-COOH)", isCorrect: false },
+        { id: "opt-8-c", label: "C" as const, body: "Amino group (-NH2)", isCorrect: false },
+        { id: "opt-8-d", label: "D" as const, body: "Carbonyl group (-CHO)", isCorrect: false },
+      ],
+    },
   ];
 
   for (const q of questionsToSeed) {
     const { options, ...questionData } = q;
     await db.insert(questions).values(questionData);
-    await db.insert(questionOptions).values(options.map(opt => ({ ...opt, questionId: q.id })));
+    await db.insert(questionOptions).values(options.map((opt) => ({ ...opt, questionId: q.id })));
   }
 
-  console.log("Database successfully seeded with demo user and 6 Biology questions!");
+  console.log("Database successfully seeded!");
 }
 
 if (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module) {
