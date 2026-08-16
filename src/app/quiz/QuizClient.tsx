@@ -24,9 +24,10 @@ interface QuizClientProps {
   topicId?: string;
   topicName: string;
   questions: Question[];
+  userId?: string;
 }
 
-export function QuizClient({ topicName, questions }: QuizClientProps) {
+export function QuizClient({ topicName, questions, userId }: QuizClientProps) {
   const router = useRouter();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOptionId, setSelectedOptionId] = useState<string>("");
@@ -76,11 +77,11 @@ export function QuizClient({ topicName, questions }: QuizClientProps) {
 
     setSubmitting(true);
     try {
-      const demoUserId = "demo-user-id";
+      const activeUserId = userId || "demo-user-id";
       const timeTakenMs = 42000;
 
       const result = await submitAnswerAction({
-        userId: demoUserId,
+        userId: activeUserId,
         questionId: currentQuestion.id,
         selectedOptionId,
         timeTakenMs,

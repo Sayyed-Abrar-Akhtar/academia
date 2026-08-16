@@ -6,11 +6,25 @@ export async function initializeDatabase() {
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      email TEXT NOT NULL UNIQUE,
-      roll_number TEXT NOT NULL,
+      email TEXT UNIQUE NOT NULL DEFAULT 'pending@example.com',
+      email_verified BOOLEAN DEFAULT FALSE,
+      last_login_at TIMESTAMP,
+      avatar_url TEXT,
+      roll_number TEXT,
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
+
+  // Ensure columns exist if table was created earlier with old schema
+  await client.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT UNIQUE NOT NULL DEFAULT 'pending@example.com';
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN DEFAULT FALSE;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+    ALTER TABLE users ALTER COLUMN roll_number DROP NOT NULL;
+  `).catch(() => {
+    // Catch if already modified or running fresh
+  });
 
   await client.query(`
     CREATE TABLE IF NOT EXISTS exams (
@@ -90,15 +104,31 @@ export async function seed() {
 
   console.log("Database cleared. Inserting demo/placeholder data...");
 
-  // Hardcoded demo user for local testing without real auth
-  const demoUser = {
-    id: "demo-user-id",
-    name: "Aarav Shrestha",
-    email: "aarav.shrestha@example.com",
-    rollNumber: "MECEE-2083-0447",
-    createdAt: new Date(),
+  const now = new Date();
+
+  // Seed Admin user
+  const adminUser = {
+    id: "admin-user-id",
+    name: "Admin",
+    email: "admin@sayyedabrarakhtar.com.np",
+    rollNumber: "ADMIN-001",
+    emailVerified: true,
+    lastLoginAt: now,
+    createdAt: now,
   };
-  await db.insert(users).values(demoUser);
+  await db.insert(users).values(adminUser);
+
+  // Seed "Me" user (using demo-user-id so existing tests pass)
+  const meUser = {
+    id: "demo-user-id",
+    name: "Me",
+    email: "me@sayyedabrarakhtar.com.np",
+    rollNumber: "USER-001",
+    emailVerified: true,
+    lastLoginAt: now,
+    createdAt: now,
+  };
+  await db.insert(users).values(meUser);
 
   const meceeExam = {
     id: "exam-mecee",

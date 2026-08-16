@@ -6,6 +6,7 @@ import { eq } from "drizzle-orm";
 import { AdmitCard } from "@/components/AdmitCard";
 import { BubbleFill } from "@/components/BubbleFill";
 import { Header, getSessionUser } from "@/components/Header";
+import { getCurrentUser } from "@/lib/auth";
 import { getSubjectMasteryForUser, getLastActiveTopicIdForUser } from "@/lib/mastery";
 
 export const dynamic = "force-dynamic";
@@ -13,19 +14,21 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage() {
   await ensureDbSeeded();
 
-  const user = await getSessionUser();
+  const currentUser = await getCurrentUser();
+  const activeUserId = currentUser?.id || "demo-user-id";
 
-  const demoUserId = "demo-user-id";
+  const headerUser = await getSessionUser();
+
   const userRecord = await db.query.users.findFirst({
-    where: eq(users.id, demoUserId),
+    where: eq(users.id, activeUserId),
   });
 
   if (!userRecord) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen text-center p-6 bg-[#0A0A0A] font-mono">
-        <h1 className="text-xl text-vermillion font-bold mb-4">Demo User Not Found</h1>
+        <h1 className="text-xl text-vermillion font-bold mb-4">User Not Found</h1>
         <p className="text-sm text-neutral-400 mb-6 max-w-md">
-          Please run the database seed script to insert the default demo user before accessing the dashboard.
+          Please run the database seed script to insert the default user before accessing the dashboard.
         </p>
         <Link href="/" className="text-marigold underline hover:text-opacity-80">
           Return Home
@@ -35,7 +38,7 @@ export default async function DashboardPage() {
   }
 
   const userAttempts = await db.query.attempts.findMany({
-    where: eq(attempts.userId, demoUserId),
+    where: eq(attempts.userId, activeUserId),
   });
 
   const totalAttempts = userAttempts.length;
@@ -57,7 +60,7 @@ export default async function DashboardPage() {
 
   const subjectMasteries = await Promise.all(
     meceeSubjects.map(async (subj) => {
-      const mastery = await getSubjectMasteryForUser(demoUserId, subj.id);
+      const mastery = await getSubjectMasteryForUser(activeUserId, subj.id);
       return {
         subject: subj,
         mastery,
@@ -65,12 +68,12 @@ export default async function DashboardPage() {
     })
   );
 
-  const lastActiveTopicId = await getLastActiveTopicIdForUser(demoUserId);
+  const lastActiveTopicId = await getLastActiveTopicIdForUser(activeUserId);
   const resumeQuizHref = lastActiveTopicId ? `/quiz/${lastActiveTopicId}` : "/exams/mecee-bl";
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0A0A0A] text-[#EDEDED] font-sans">
-      <Header user={user} />
+      <Header user={headerUser} />
 
       <main className="flex-grow max-w-5xl w-full mx-auto px-4 py-12 space-y-12">
         <div className="flex flex-col md:flex-row gap-8 justify-between items-start">
@@ -98,7 +101,7 @@ export default async function DashboardPage() {
           <div className="w-full md:w-auto">
             <AdmitCard
               name={userRecord.name}
-              rollNo={userRecord.rollNumber}
+              rollNo={userRecord.rollNumber || "PENDING"}
               exam="MECEE-BL"
               focus="Biology · Genetics"
               masteryPercentage={masteryPercentage}

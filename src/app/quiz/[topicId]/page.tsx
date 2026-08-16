@@ -72,6 +72,7 @@ export default async function QuizPage({ params }: QuizPageProps) {
           topicId={topicId}
           topicName={topicRecord.name}
           questions={questionsWithOptions}
+          userId={user?.id}
         />
       </main>
 

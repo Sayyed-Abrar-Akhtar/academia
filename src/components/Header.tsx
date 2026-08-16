@@ -1,9 +1,6 @@
 import React from "react";
 import Link from "next/link";
-import { cookies } from "next/headers";
-import { db } from "@/db";
-import { users } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { getCurrentUser } from "@/lib/auth";
 
 export interface HeaderProps {
   user?: { id: string; name: string } | null;
@@ -11,23 +8,12 @@ export interface HeaderProps {
 
 export async function getSessionUser(): Promise<{ id: string; name: string } | null> {
   try {
-    const cookieStore = await cookies();
-    const sessionToken =
-      cookieStore.get("session")?.value ||
-      cookieStore.get("session_id")?.value ||
-      cookieStore.get("user_id")?.value;
-
-    if (sessionToken) {
-      const userRecord = await db.query.users.findFirst({
-        where: eq(users.id, sessionToken),
-      });
-      if (userRecord) {
-        return { id: userRecord.id, name: userRecord.name };
-      }
-      return { id: sessionToken, name: "Aarav Shrestha" };
+    const user = await getCurrentUser();
+    if (user) {
+      return { id: user.id, name: user.name };
     }
   } catch {
-    // Graceful fallback if called outside server request context
+    // Fallback if called outside server request context
   }
   return null;
 }
@@ -64,9 +50,14 @@ export function Header({ user }: HeaderProps) {
                 account ({user.name})
               </Link>
               <span className="text-neutral-700">|</span>
-              <Link href="/login" className="hover:text-marigold transition-colors">
-                logout
-              </Link>
+              <form action="/api/auth/logout" method="POST" className="inline">
+                <button
+                  type="submit"
+                  className="hover:text-marigold transition-colors cursor-pointer text-neutral-400"
+                >
+                  logout
+                </button>
+              </form>
             </div>
           ) : (
             <Link href="/login" className="hover:text-marigold transition-colors">
