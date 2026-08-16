@@ -74,3 +74,17 @@ export const attempts = pgTable("attempts", {
   timeTakenMs: integer("time_taken_ms").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const resources = pgTable("resources", {
+  id: text("id").primaryKey(),
+  type: text("type").$type<"pdf" | "video" | "book" | "past_paper" | "thesis_guide" | "notes">().notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  url: text("url").notNull(),
+  sourceAttribution: text("source_attribution"),
+  examId: text("exam_id").references(() => exams.id, { onDelete: "cascade" }),
+  subjectId: text("subject_id").references(() => subjects.id, { onDelete: "cascade" }),
+  topicId: text("topic_id").references(() => topics.id, { onDelete: "cascade" }),
+  accessTier: text("access_tier").$type<"free" | "pro">().default("free").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

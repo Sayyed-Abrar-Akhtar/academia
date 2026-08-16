@@ -1,5 +1,5 @@
 import { db, client } from "./index";
-import { users, exams, subjects, topics, questions, questionOptions } from "./schema";
+import { users, exams, subjects, topics, questions, questionOptions, resources } from "./schema";
 
 export async function initializeDatabase() {
   await client.query(`
@@ -87,6 +87,22 @@ export async function initializeDatabase() {
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS resources (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      url TEXT NOT NULL,
+      source_attribution TEXT,
+      exam_id TEXT REFERENCES exams(id) ON DELETE CASCADE,
+      subject_id TEXT REFERENCES subjects(id) ON DELETE CASCADE,
+      topic_id TEXT REFERENCES topics(id) ON DELETE CASCADE,
+      access_tier TEXT NOT NULL DEFAULT 'free',
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
 }
 
 export async function seed() {
@@ -94,6 +110,7 @@ export async function seed() {
   await initializeDatabase();
   console.log("DB initialized. Checking existing records...");
 
+  await client.query("DELETE FROM resources");
   await client.query("DELETE FROM attempts");
   await client.query("DELETE FROM question_options");
   await client.query("DELETE FROM questions");
@@ -300,6 +317,71 @@ export async function seed() {
     const { options, ...questionData } = q;
     await db.insert(questions).values(questionData);
     await db.insert(questionOptions).values(options.map((opt) => ({ ...opt, questionId: q.id })));
+  }
+
+  const resourcesToSeed = [
+    {
+      id: "res-genetics-notes",
+      type: "notes" as const,
+      title: "Genetics — Mendelian Inheritance Summary",
+      description: `Mendelian inheritance describes the basic principles of heredity discovered by Gregor Mendel through his work with pea plants. Fundamental to this framework are dominant and recessive alleles, which determine how traits are passed from parents to offspring. An organism inheriting two identical alleles for a trait is homozygous, whereas an organism with two different alleles is heterozygous.
+
+In a classic monohybrid cross, two heterozygous parents (Tt) are crossed to observe the distribution of a single trait. The Law of Segregation dictates that each gamete receives only one allele for each gene. Using a Punnett square, we can determine that the genotypic ratio of the resulting offspring is 1 TT : 2 Tt : 1 tt, which translates to a 3:1 phenotypic ratio of dominant to recessive traits.
+
+Mendel's Law of Independent Assortment further explains that alleles for different genes segregate independently during gamete formation, provided the genes are on different chromosomes or far apart on the same chromosome. Understanding these core concepts provides the necessary foundation for analyzing complex inheritance patterns such as incomplete dominance, codominance, and sex-linked traits.`,
+      url: "https://academia.sayyedabrarakhtar.com.np/library/notes/mendelian-inheritance",
+      sourceAttribution: "Academia Medical Prep Faculty",
+      examId: meceeExam.id,
+      subjectId: biologySubject.id,
+      topicId: geneticsTopic.id,
+      accessTier: "free" as const,
+    },
+    {
+      id: "res-cell-bio-notes",
+      type: "notes" as const,
+      title: "Cell Biology — Structure Overview",
+      description: `Cells are the fundamental structural and functional units of all living organisms. Eukaryotic cells are defined by membrane-bound organelles, including a prominent nucleus that houses genetic material (DNA). The cytoplasm contains various specialized organelles such as mitochondria for cellular respiration and ATP generation, ribosomes for protein synthesis, and the endoplasmic reticulum for lipid synthesis and protein processing.
+
+In plant cells, additional distinct structures exist, including a rigid cellulose cell wall that provides structural integrity, chloroplasts responsible for photosynthesis, and a large central vacuole for osmoregulation. Animal cells lack cell walls and chloroplasts but contain centrioles involved in spindle fiber formation during mitosis. Understanding the spatial organization and specialized biochemical functions of these organelles is crucial for high-yield medical entrance preparation.`,
+      url: "https://academia.sayyedabrarakhtar.com.np/library/notes/cell-biology-overview",
+      sourceAttribution: "Academia Medical Prep Faculty",
+      examId: meceeExam.id,
+      subjectId: biologySubject.id,
+      topicId: cellBiologyTopic.id,
+      accessTier: "free" as const,
+    },
+    {
+      id: "res-genetics-video",
+      type: "video" as const,
+      title: "Mendelian Inheritance Explained",
+      description: "A detailed visual walkthrough of Gregor Mendel's law of segregation, monohybrid crosses, and Punnett square calculations for genetics revision.",
+      url: "https://www.youtube.com/watch?v=cWt1RF115HC",
+      sourceAttribution: "Bozeman Science",
+      examId: meceeExam.id,
+      subjectId: biologySubject.id,
+      topicId: geneticsTopic.id,
+      accessTier: "free" as const,
+    },
+    {
+      id: "res-research-methodology",
+      type: "thesis_guide" as const,
+      title: "How to Structure a Research Methodology Section",
+      description: `The methodology section of a research project or thesis explains the framework, design, and procedures used to answer your core research questions. A well-constructed methodology demonstrates academic rigor, reproducibility, and clarity to peer reviewers and examination committees.
+
+To structure this section effectively, begin with the Research Design, specifying whether your approach is quantitative, qualitative, or mixed-methods, along with justification for your selection. Next, clearly define the Study Population, Sampling Strategy, and Sample Size determination. Explicitly outline your Inclusion and Exclusion criteria to ensure transparent cohort selection.
+
+Next, detail Data Collection Instruments and Methods (e.g., structured surveys, clinical measurements, standardized laboratory assays) and discuss pilot testing or instrument validation procedures. Follow this with Data Analysis Procedures, identifying statistical tests (e.g., t-tests, ANOVA, Chi-square) and software tools (SPSS, R, Python) used. Finally, address Ethical Considerations, including IRB approval and informed consent procedures. Common pitfalls to avoid include describing results prematurely, failing to justify methodological choices, and omitting details required for replication.`,
+      url: "https://academia.sayyedabrarakhtar.com.np/library/guides/research-methodology",
+      sourceAttribution: "Academia Post-Graduate Thesis Toolkit",
+      examId: null,
+      subjectId: null,
+      topicId: null,
+      accessTier: "pro" as const,
+    },
+  ];
+
+  for (const res of resourcesToSeed) {
+    await db.insert(resources).values(res);
   }
 
   console.log("Database successfully seeded!");

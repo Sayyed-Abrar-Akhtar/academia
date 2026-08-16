@@ -37,6 +37,10 @@ export function Header({ user }: HeaderProps) {
             exams
           </Link>
           <span className="text-neutral-700">|</span>
+          <Link href="/library" className="hover:text-marigold transition-colors flex items-center gap-1">
+            📚 library
+          </Link>
+          <span className="text-neutral-700">|</span>
           <Link href="/dashboard" className="hover:text-marigold transition-colors">
             dashboard
           </Link>
