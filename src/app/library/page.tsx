@@ -3,6 +3,7 @@ import Link from "next/link";
 import { db, ensureDbSeeded } from "@/db";
 import { resources, subjects } from "@/db/schema";
 import { Header, getSessionUser } from "@/components/Header";
+import { isUserPro } from "@/lib/subscription";
 import { eq, and } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +18,7 @@ interface LibraryPageProps {
 export default async function LibraryPage({ searchParams }: LibraryPageProps) {
   await ensureDbSeeded();
   const user = await getSessionUser();
+  const userIsPro = user ? await isUserPro(user.id) : false;
   const resolvedSearchParams = await searchParams;
 
   const typeFilter = resolvedSearchParams.type || "";
@@ -152,7 +154,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
         ) : (
           <div className="grid grid-cols-1 gap-6">
             {filteredResources.map((res) => {
-              const isLocked = res.accessTier === "pro";
+              const isLocked = res.accessTier === "pro" && !userIsPro;
               const isVideo = res.type === "video";
 
               return (
@@ -200,9 +202,15 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
                         <p className="text-marigold font-mono font-bold text-sm mb-1">
                           Pro members only
                         </p>
-                        <p className="text-neutral-400 text-xs max-w-md">
+                        <p className="text-neutral-400 text-xs max-w-md mb-3">
                           Upgrade to Academia Pro to unlock full thesis toolkits, comprehensive study guides, and past paper solutions.
                         </p>
+                        <Link
+                          href="/pricing"
+                          className="px-3 py-1.5 rounded bg-marigold text-black font-mono font-bold text-xs hover:bg-amber-400 transition-colors"
+                        >
+                          View Pro Plans →
+                        </Link>
                       </div>
                     </div>
                   ) : (
