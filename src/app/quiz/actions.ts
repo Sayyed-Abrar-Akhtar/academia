@@ -3,6 +3,7 @@
 import { db, ensureDbSeeded } from "@/db";
 import { attempts, questionOptions, questions } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { updateTopicMasteryOnAttempt } from "@/lib/adaptive";
 
 interface SubmitAnswerParams {
   userId: string;
@@ -45,6 +46,11 @@ export async function submitAnswerAction({
     timeTakenMs,
     createdAt: new Date(),
   });
+
+  // Update mastery scores using SM-2 algorithm
+  if (questionDetails.topicId) {
+    await updateTopicMasteryOnAttempt(userId, questionDetails.topicId, isCorrect, timeTakenMs);
+  }
 
   return {
     isCorrect,

@@ -1,5 +1,5 @@
 import { db, client } from "./index";
-import { users, exams, subjects, topics, questions, questionOptions, resources } from "./schema";
+import { users, exams, subjects, topics, questions, questionOptions, resources, subscriptions, masteryScores } from "./schema";
 
 export async function initializeDatabase() {
   await client.query(`
@@ -103,6 +103,33 @@ export async function initializeDatabase() {
       created_at TIMESTAMP NOT NULL DEFAULT NOW()
     );
   `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      tier TEXT NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'NPR',
+      payment_provider TEXT NOT NULL,
+      status TEXT NOT NULL,
+      expires_at TIMESTAMP NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS mastery_scores (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      topic_id TEXT NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+      score INTEGER NOT NULL DEFAULT 0,
+      repetition INTEGER NOT NULL DEFAULT 0,
+      interval INTEGER NOT NULL DEFAULT 1,
+      easiness_factor INTEGER NOT NULL DEFAULT 250,
+      next_review_at TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+    );
+  `);
 }
 
 export async function seed() {
@@ -110,6 +137,8 @@ export async function seed() {
   await initializeDatabase();
   console.log("DB initialized. Checking existing records...");
 
+  await client.query("DELETE FROM mastery_scores");
+  await client.query("DELETE FROM subscriptions");
   await client.query("DELETE FROM resources");
   await client.query("DELETE FROM attempts");
   await client.query("DELETE FROM question_options");
@@ -382,6 +411,49 @@ Next, detail Data Collection Instruments and Methods (e.g., structured surveys, 
 
   for (const res of resourcesToSeed) {
     await db.insert(resources).values(res);
+  }
+
+  // Seed sample subscription for admin user
+  const adminSubscription = {
+    id: "sub-admin-1",
+    userId: adminUser.id,
+    tier: "full_pro" as const,
+    currency: "NPR",
+    paymentProvider: "manual" as const,
+    status: "active" as const,
+    expiresAt: new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000),
+    createdAt: now,
+  };
+  await db.insert(subscriptions).values(adminSubscription);
+
+  // Seed sample mastery scores
+  const sampleMasteryScores = [
+    {
+      id: "ms-demo-genetics",
+      userId: meUser.id,
+      topicId: geneticsTopic.id,
+      score: 50,
+      repetition: 2,
+      interval: 6,
+      easinessFactor: 250,
+      nextReviewAt: new Date(now.getTime() + 6 * 24 * 60 * 60 * 1000),
+      updatedAt: now,
+    },
+    {
+      id: "ms-demo-cell-bio",
+      userId: meUser.id,
+      topicId: cellBiologyTopic.id,
+      score: 20,
+      repetition: 1,
+      interval: 1,
+      easinessFactor: 236,
+      nextReviewAt: new Date(now.getTime() + 1 * 24 * 60 * 60 * 1000),
+      updatedAt: now,
+    },
+  ];
+
+  for (const ms of sampleMasteryScores) {
+    await db.insert(masteryScores).values(ms);
   }
 
   console.log("Database successfully seeded!");

@@ -88,3 +88,32 @@ export const resources = pgTable("resources", {
   accessTier: text("access_tier").$type<"free" | "pro">().default("free").notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export const subscriptions = pgTable("subscriptions", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  tier: text("tier").$type<"basic_pro" | "full_pro">().notNull(),
+  currency: text("currency").default("NPR").notNull(),
+  paymentProvider: text("payment_provider").$type<"esewa" | "khalti" | "manual">().notNull(),
+  status: text("status").$type<"active" | "expired" | "pending">().notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const masteryScores = pgTable("mastery_scores", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  topicId: text("topic_id")
+    .references(() => topics.id, { onDelete: "cascade" })
+    .notNull(),
+  score: integer("score").default(0).notNull(),
+  repetition: integer("repetition").default(0).notNull(),
+  interval: integer("interval").default(1).notNull(),
+  easinessFactor: integer("easiness_factor").default(250).notNull(),
+  nextReviewAt: timestamp("next_review_at"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
